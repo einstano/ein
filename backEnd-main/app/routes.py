@@ -1,5 +1,5 @@
 from flask import request, jsonify, Blueprint
-from .models import db, Staff,  Student, Payment, Fee, BusPayment, BusDestination, Term, Gallery, Notification, Grade
+from .models import db, Staff,  Student, Payment, Fee, BusPayment, BusDestination, Term, Gallery, Notification, Grade, BoardingFee
 from flask import current_app as app
 import logging
 from datetime import datetime
@@ -69,18 +69,9 @@ def add_student():
             bus_balance=data.get("bus_balance", 0.0),
             destination_id=data.get("destination_id")
         )
-
+        student.set_password()
         # Assign bus destination if 'use_bus' is True
-        if data.get("use_bus", False):
-            destination_id = data.get("destination_id")
-            if not destination_id:
-                return jsonify({"error": "Bus destination is required when 'use_bus' is True."}), 400
-
-            # Fetch and assign the bus destination
-            destination = BusDestination.query.get(destination_id)
-            if not destination:
-                return jsonify({"error": "Invalid bus destination."}), 400
-            student.destination_id = destination.id
+            # Fetch and assign
 
         # Fetch the active term
         active_term = Term.get_active_term()
@@ -115,7 +106,9 @@ def get_students():
             "id": student.id,
             "name": student.name,
             "grade": student.grade.name if student.grade else "N/A",
-            "balance": student.balance
+            "balance": student.balance,
+            "arrears":student.arrears,
+            "bus_balance": student.bus_balance
         }
         for student in students
     ]
@@ -353,6 +346,18 @@ def get_destinations():
     except Exception as e:
         app.logger.error(f"Error fetching bus destinations: {e}")
         return jsonify({"error": str(e)}), 500
+
+@routes.route('/students/<int:student_id>/assign_bus', methods=['POST'])
+def assign_bus_to_student(student_id):
+    student = Student.query.get_or_404(student_id)
+    destination_id = request.json.get("destination_id")
+
+    try:
+        # Call the model method to assign destination, update balance, and set use_bus to True
+        student.assign_bus_destination(destination_id)
+        return jsonify({"message": "Bus destination, balance updated, and use_bus set to True."}), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
         
 @routes.route('/students/<int:student_id>/payments/term/<int:term_id>', methods=['GET'])
 def get_student_payments_by_term(student_id, term_id):
@@ -742,3 +747,38 @@ def delete_fee(fee_id):
         return jsonify({"message": "Fee deleted successfully."}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@routes.route('/boarding_fee', methods=['GET'])
+def get_boarding_fee():
+    boarding_fee = BoardingFee.query.first()
+
+    if boarding_fee:
+        return jsonify({
+            "id": boarding_fee.id,
+            "extra_fee": boarding_fee.extra_fee
+        })
+    else:
+        return jsonify({"error": "Boarding fee not found"}), 404
+
+@routes.route('/boarding_fee', methods=['PUT'])
+def update_boarding_fee():
+    try:
+        data = request.get_json()
+
+        boarding_fee = BoardingFee.query.first()
+
+        if not boarding_fee:
+            return jsonify({"error": "Boarding fee not found"}), 404
+
+        # Update extra_fee if provided
+        if "extra_fee" in data:
+            boarding_fee.extra_fee = data["extra_fee"]
+
+        db.session.commit()
+
+        return jsonify({"message": "Boarding fee updated successfully", "extra_fee": boarding_fee.extra_fee}), 200
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error updating boarding fee: {e}")
+        return jsonify({"error": str(e)}), 500
+        

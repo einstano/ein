@@ -103,14 +103,14 @@ class Student(db.Model):
         if not fee:
             raise ValueError("Fee structure not set for this grade and term.")
 
-        self.balance = fee.amount
+        self.balance = fee.amount if fee.amount is not None else 0.0
         if self.is_boarding:
             boarding_fee = BoardingFee.query.first()
             if boarding_fee:
-                self.balance += boarding_fee.extra_fee
+                self.balance += boarding_fee.extra_fee if boarding_fee.extra_fee is not None else 0.0
 
-        self.balance -= self.prepayment
-        self.prepayment = 0
+        self.balance -= self.prepayment if self.prepayment is not None else 0.0
+        self.prepayment = 0.0
         db.session.commit()
 
     def update_payment(self, amount):
@@ -118,7 +118,8 @@ class Student(db.Model):
         active_term = Term.get_active_term()
         if not active_term:
             raise ValueError("No active term found.")
-
+        if self.arrears is None:
+            self.arrears = 0.0
         # Handle arrears first
         if self.arrears > 0:
             if amount >= self.arrears:
@@ -126,6 +127,7 @@ class Student(db.Model):
                 self.arrears = 0
             else:
                 self.arrears -= amount
+    
                 db.session.commit()
                 return  # Payment fully applied to arrears
 
@@ -136,7 +138,19 @@ class Student(db.Model):
             self.balance = 0
 
         db.session.commit()
+        def assign_bus_destination(self, destination_id):
+            """Assign bus destination and update the bus balance if use_bus is True."""
+            if not self.use_bus:
+                raise ValueError("Student is not using the bus.")
 
+        destination = BusDestination.query.get(destination_id)
+        if not destination:
+            raise ValueError("Invalid bus destination.")
+
+        self.destination_id = destination.id
+        self.bus_balance = destination.charge
+
+        db.session.commit()
     def __repr__(self):
         return f"<Student(name={self.name}, balance={self.balance}, arrears={self.arrears})>"
 
@@ -332,7 +346,6 @@ class BusPayment(db.Model):
         "amount": self.amount,
         "payment_date": self.payment_date.isoformat()
     }
-    
 
     @staticmethod
     def create_payment(student_id, amount):
@@ -349,14 +362,20 @@ class BusPayment(db.Model):
         student = Student.query.get(student_id)
         if not student or not student.destination_id:
             raise ValueError("Student does not have an assigned bus destination.")
-            
 
         # Create a new bus payment
         payment = BusPayment(student_id=student_id, term_id=current_term.id, destination_id=student.destination_id, amount=amount)
     
         db.session.add(payment)
         db.session.commit()
+
+        # Update bus_balance after the payment
+        if student.use_bus:
+            student.bus_balance += amount  # Add payment to bus_balance
+            db.session.commit()
+
         return payment
+
         
 # Notifications model
 class Notification(db.Model):
@@ -374,7 +393,13 @@ class Notification(db.Model):
     }
     
 
+class BoardingFee(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    extra_fee = db.Column(db.Float, nullable=False, default=3500)
 
+    def __repr__(self):
+        return f'<BoardingFee{self.extra_fee}>'
+        
 
 
 

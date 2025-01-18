@@ -11,11 +11,11 @@ const StudentList = ({ role, onSelectStudent }) => {
   useEffect(() => {
     const fetchStudents = async () => {
       try {
-        let url = "https://7f47d908-dbee-420b-bbaa-bb243aa6b89a-00-3i21golrk2i7y.spock.replit.dev:5000/students"; // Default for Admin & Bursar
+        let url = "https://614458cc-233b-4e40-b95e-2b7212ee76e7-00-2ev80w0c23sgl.janeway.replit.dev:5000/students"; // Default for Admin & Bursar
 
         if (role === "teacher") {
           const staffId = localStorage.getItem("staffId"); // Assuming staffId is stored after login
-          url = `https://7f47d908-dbee-420b-bbaa-bb243aa6b89a-00-3i21golrk2i7y.spock.replit.dev:5000/staff/${staffId}/students`;
+          url = `https://614458cc-233b-4e40-b95e-2b7212ee76e7-00-2ev80w0c23sgl.janeway.replit.dev:5000/staff/${staffId}/students`;
         }
 
         const response = await axios.get(url);

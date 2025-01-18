@@ -4,9 +4,10 @@ import '../styles/addStudent.css';
 
 const AddStudent = () => {
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [admission_number, setAdmission_number] = useState('');
   const [grade, setGrade] = useState('');  // Initialize as empty string for now
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState(0.0);
   const [use_bus, setUse_bus] = useState(false);
   const [destination_id, setDestination_id] = useState('');
   const [is_boarding, setIs_boarding] = useState(false);
@@ -18,10 +19,10 @@ const AddStudent = () => {
     const fetchData = async () => {
       try {
         // Fetch grades and bus destinations
-        const gradeResponse = await axios.get('https://7f47d908-dbee-420b-bbaa-bb243aa6b89a-00-3i21golrk2i7y.spock.replit.dev:5000/grades');
+        const gradeResponse = await axios.get('https://614458cc-233b-4e40-b95e-2b7212ee76e7-00-2ev80w0c23sgl.janeway.replit.dev:5000/grades');
         setGrades(gradeResponse.data);
 
-        const destinationResponse = await axios.get('https://7f47d908-dbee-420b-bbaa-bb243aa6b89a-00-3i21golrk2i7y.spock.replit.dev:5000/destinations');
+        const destinationResponse = await axios.get('https://614458cc-233b-4e40-b95e-2b7212ee76e7-00-2ev80w0c23sgl.janeway.replit.dev:5000/destinations');
         setBusDestinations(destinationResponse.data);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -42,19 +43,20 @@ const AddStudent = () => {
 
     const studentData = {
       name,
-      admission_number: admissionNumber,
+      phone,
+      admission_number: admission_number,
       grade_id: grade,  // grade_id instead of grade (since your Student model uses grade_id)
       balance,
-      is_boarding: isBoarding,
+      is_boarding: is_boarding,
       use_bus: use_bus,
-      destination_id: useBus ? destinationId : null,
+      destination_id: use_bus ? destination_id : null,
     };
 
     try {
-      const response = await axios.post('/students', studentData);
+      const response = await axios.post('https://614458cc-233b-4e40-b95e-2b7212ee76e7-00-2ev80w0c23sgl.janeway.replit.dev:5000/students', studentData);
       setMessage(response.data.message || 'Student added successfully.');
       setName('');
-      setAdmissionNumber('');
+      setAdmission_number('');
       setGrade('');
       setBalance(0);
       setUse_bus(false);
@@ -73,6 +75,10 @@ const AddStudent = () => {
         <div>
           <label>Name:</label>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+        </div>
+        <div>
+          <label>Phone number:</label>
+          <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} required />
         </div>
         <div>
           <label>Admission Number:</label>
