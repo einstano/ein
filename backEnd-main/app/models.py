@@ -78,6 +78,7 @@ class Student(db.Model):
     is_boarding = db.Column(db.Boolean, nullable=False, default=False)
     password = db.Column(db.String(100), nullable=False)
     destination_id = db.Column(db.Integer, db.ForeignKey('bus_destination.id'))
+    last_payment_term_id = db.Column(db.Integer, nullable=True)
 
     # Relationships
     grade = db.relationship('Grade', backref='students')
@@ -113,7 +114,8 @@ class Student(db.Model):
         self.prepayment = 0.0
         db.session.commit()
 
-    def update_payment(self, amount):
+    def update_payment(self, amount, term_id):
+
         """Update student balance, prepayment, and arrears for the current active term."""
         active_term = Term.get_active_term()
         if not active_term:
@@ -137,11 +139,22 @@ class Student(db.Model):
             self.prepayment = -self.balance  # Convert negative balance to prepayment
             self.balance = 0
 
+        if self.prepayment > 0:
+            next_term = Term.query.filter(
+                Term.start_date > datetime.utcnow()
+            ).order_by(Term.start_date).first()
+
+            if next_term:
+                self.prepayment_term_id = next_term.id
+            else:
+                # If no next term, the prepayment stays as a balance
+                self.prepayment_term_id = None
+                
         db.session.commit()
-        def assign_bus_destination(self, destination_id):
-            """Assign bus destination and update the bus balance if use_bus is True."""
-            if not self.use_bus:
-                raise ValueError("Student is not using the bus.")
+    def assign_bus_destination(self, destination_id):
+        """Assign bus destination and update the bus balance if use_bus is True."""
+        if not self.use_bus:
+            raise ValueError("Student is not using the bus.")
 
         destination = BusDestination.query.get(destination_id)
         if not destination:

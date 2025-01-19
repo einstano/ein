@@ -70,6 +70,17 @@ def add_student():
             destination_id=data.get("destination_id")
         )
         student.set_password()
+        if student.use_bus:
+            destination_id = data.get("destination_id")
+            if not destination_id:
+                return jsonify({"error": "destination_id is required when use_bus is True."}), 400
+
+            destination = BusDestination.query.get(destination_id)
+            if not destination:
+                return jsonify({"error": "Invalid bus destination ID."}), 400
+
+            student.destination_id = destination.id
+            student.bus_balance = destination.charge
         # Assign bus destination if 'use_bus' is True
             # Fetch and assign
 
@@ -108,7 +119,8 @@ def get_students():
             "grade": student.grade.name if student.grade else "N/A",
             "balance": student.balance,
             "arrears":student.arrears,
-            "bus_balance": student.bus_balance
+            "bus_balance": student.bus_balance,
+            "last_payment_term_id":student.last_payment_term_id 
         }
         for student in students
     ]
@@ -216,6 +228,7 @@ def get_student(id):
 @routes.route('/payments', methods=['POST'])
 def add_payment():
     data = request.get_json()
+
     try:
         student_id = data.get('student_id')
         amount = data.get('amount')
@@ -223,22 +236,29 @@ def add_payment():
         term_id = data.get('term_id')
         description = data.get('description')
 
+        # Check if all required fields are provided
         if not all([student_id, amount, method, term_id]):
             return jsonify({"error": "Missing required fields"}), 400
 
-        payment = Payment.record_payment(
+        # Create and record the payment
+        payment = Payment(
             student_id=student_id,
             amount=amount,
             method=method,
             term_id=term_id,
-            description=description,
+            description=description
         )
-        return jsonify({"message": "Payment added successfully", "payment_id": payment.id}), 201
 
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 404
+        # Commit the session to save the payment
+        db.session.add(payment)
+        db.session.commit()
+
+        return jsonify({"message": "Payment added successfully!"}), 201
+
     except Exception as e:
-        return jsonify({"error": "An error occurred while adding payment", "details": str(e)}), 500
+        # Handle any exceptions that may arise during the process
+        db.session.rollback()  # Rollback in case of an error
+        return jsonify({"error": str(e)}), 500
 
 # Fetch all payments
 @routes.route('/payments', methods=['GET'])
@@ -780,5 +800,61 @@ def update_boarding_fee():
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Error updating boarding fee: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@routes.route('/bus_payments', methods=['POST'])
+def add_bus_payment():
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        required_fields = ["student_id", "amount"]
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"{field} is required."}), 400
+
+        student_id = data["student_id"]
+        amount = data["amount"]
+
+        # Validate student existence
+        student = Student.query.get(student_id)
+        if not student:
+            return jsonify({"error": "Student not found."}), 404
+
+        # Check if the student uses the bus
+        if not student.use_bus or not student.destination_id:
+            return jsonify({"error": "Student does not use the bus or has no assigned destination."}), 400
+
+        # Fetch the current active term
+        current_term = Term.get_active_term()
+        if not current_term:
+            return jsonify({"error": "No active term found."}), 400
+
+        # Create the bus payment
+        bus_payment = BusPayment(
+            student_id=student_id,
+            term_id=current_term.id,
+            destination_id=student.destination_id,
+            amount=amount
+        )
+        db.session.add(bus_payment)
+
+        # Update the student's bus balance
+        if student.bus_balance >= amount:
+            student.bus_balance -= amount
+        else:
+            return jsonify({"error": "Payment amount exceeds the student's current bus balance."}), 400
+
+        db.session.commit()
+
+        return jsonify({
+            "message": "Bus payment added successfully.",
+            "bus_payment": bus_payment.to_dict(),
+            "updated_bus_balance": student.bus_balance
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error adding bus payment: {e}")
         return jsonify({"error": str(e)}), 500
         

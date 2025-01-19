@@ -1,28 +1,34 @@
-from app.models import db, Student, Fee, BusPayment, Term
 from datetime import datetime
+from app.models import Term, Student, Fee, BusPayment, BoardingFee, db
 
 def process_term_rollover():
     # Fetch the current term
     current_term = Term.query.filter_by(end_date__lt=datetime.now()).order_by(Term.end_date.desc()).first()
     
     if current_term:
-        # Update student balances for bus and fees after the current term ends
+        # Fetch all students
         students = Student.query.all()
         for student in students:
-            # Update fee arrears
-            fee_balance = Fee.query.filter_by(student_id=student.id).first()
+            # Initialize balance based on fee structure for the next term
+            student.initialize_balance(current_term.id)  # Call method to initialize balance and reset prepayments
+
+            # Update fee arrears for the current term
+            fee_balance = Fee.query.filter_by(student_id=student.id, term_id=current_term.id).first()
             if fee_balance:
                 fee_balance.arrears += fee_balance.amount_due
                 fee_balance.amount_due = current_term.fee  # Set the new fee for the next term
-                
-            # Update bus payment arrears
+            
+            # Update bus payment arrears for the current term
             bus_payment_balance = BusPayment.query.filter_by(student_id=student.id).first()
             if bus_payment_balance:
                 bus_payment_balance.arrears += bus_payment_balance.amount_due
                 bus_payment_balance.amount_due = current_term.bus_fee  # Set new bus fee for the next term
-            
+
+            # Process the rollover for the student's fee, bus payment, and prepayment
+            student.update_payment(0)  # This will update balance, arrears, and prepayment logic as needed
+
             db.session.commit()
-        
+
         # Remove any prepayments (if student paid excess amount last term)
         for student in students:
             student_balance = Fee.query.filter_by(student_id=student.id).first()
@@ -33,7 +39,7 @@ def process_term_rollover():
         return True  # Return success status
     else:
         return False  # No term found to process rollover
-
+        
 
 def promote_students():
     # Logic for promoting students to the next class after the year ends
