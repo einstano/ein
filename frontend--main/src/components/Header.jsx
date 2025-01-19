@@ -13,7 +13,7 @@ const Header = () => {
         navigate('/admin');
         break;
       case 'bursar':
-        navigate('/BursarDashboard');
+        navigate('/bursar');
         break;
       case 'director':
         navigate('/DirectorDashboard');
