@@ -120,6 +120,7 @@ def get_students():
             "balance": student.balance,
             "arrears":student.arrears,
             "bus_balance": student.bus_balance,
+            "prepayment": student.prepayment,
             "last_payment_term_id":student.last_payment_term_id 
         }
         for student in students
@@ -307,26 +308,10 @@ def delete_payment(payment_id):
     except Exception as e:
         return jsonify({"error": "An error occurred while deleting payment", "details": str(e)}), 500
 
-
-# Get All Payments for a Student
 @routes.route('/payments/student/<int:student_id>', methods=['GET'])
-def get_payments_by_student(student_id):
-    try:
-        payments = Payment.query.filter_by(student_id=student_id).all()
-        return jsonify([{
-            "id": p.id,
-            "amount": p.amount,
-            "date": p.date,
-            "method": p.method,
-            "term_id": p.term_id,
-            "balance_after_payment": p.balance_after_payment,
-            "description": p.description,
-            "notes": p.notes
-        } for p in payments]), 200
-
-    except Exception as e:
-        return jsonify({"error": "An error occurred while fetching payments", "details": str(e)}), 500
-
+def get_payments(student_id):
+    payments = Payment.query.filter_by(student_id=student_id).all()
+    return jsonify([payment.to_dict() for payment in payments])
 
 # Get Payment by ID
 @routes.route('/payments/<int:payment_id>', methods=['GET'])
@@ -344,7 +329,6 @@ def get_payment(payment_id):
             "term_id": payment.term_id,
             "balance_after_payment": payment.balance_after_payment,
             "description": payment.description,
-            "notes": payment.notes
         }), 200
 
     except Exception as e:
@@ -421,7 +405,8 @@ def create_term():
         'id': term.id,
         'name': term.name,
         'start_date': term.start_date,
-        'end_date': term.end_date
+        'end_date': term.end_date,
+        "is_active": term.is_active
     }})
 
 @routes.route('/terms', methods=['GET'])
@@ -857,4 +842,13 @@ def add_bus_payment():
         db.session.rollback()
         app.logger.error(f"Error adding bus payment: {e}")
         return jsonify({"error": str(e)}), 500
-        
+
+@routes.route('/terms/active', methods=['GET'])
+def get_active_term():
+    # Determine the active term based on the current date
+    active_term = Term.query.filter(Term.start_date <= datetime.utcnow().date(), Term.end_date >= datetime.utcnow().date()).first()
+
+    if not active_term:
+        return jsonify({"error": "No active term found"}), 404
+
+    return jsonify(active_term.to_dict())

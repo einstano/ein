@@ -28,6 +28,7 @@ const BursarDashboard = () => {
             </button>
             {showPaymentForm && <PaymentForm studentId={selectedStudent.id} />}
           </>
+      
         )}
       </div>
     </div>

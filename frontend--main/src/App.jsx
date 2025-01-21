@@ -13,6 +13,8 @@ import RoleBasedRoute from './auth/RoleBasedRoute';
 import StudentPaymentsByTerm from './components/StudentPaymentsByTerm';
 import AddStudent from './components/AddStudent';
 import StudentList from './components/StudentList';
+import PaymentTable from './components/PaymentTable';
+
 
 const App = () => {
   return (
@@ -21,6 +23,7 @@ const App = () => {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
+          <Route path="/Payments"element={<LoginForm />} />
           <Route path="/login" element={<LoginForm />} />
           <Route path="/students" element={<StudentList />} />
           <Route path="/student" element={<StudentDashboard />} />

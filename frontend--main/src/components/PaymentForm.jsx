@@ -5,23 +5,23 @@ const PaymentForm = ({ studentId, onPaymentSuccess }) => {
   const [method, setMethod] = useState('cash');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [termId, setTermId] = useState('');
+  const [description, setDescription] = useState('');
   const [terms, setTerms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    // Fetch active terms
     const fetchTerms = async () => {
       try {
-        const response = await fetch('https://your-backend-url/terms');
-        if (!response.ok) throw new Error('Failed to fetch terms');
+        const response = await fetch(`/terms`);
+        if (!response.ok) throw new Error('Failed to fetch terms.');
         const data = await response.json();
         setTerms(data);
-        const activeTerm = data.find(term => term.is_active);
+        const activeTerm = data.find((term) => term.is_active);
         if (activeTerm) setTermId(activeTerm.id);
       } catch (err) {
-        setError(err.message || 'Failed to load terms');
+        setError(err.message || 'Failed to load terms.');
       }
     };
 
@@ -44,15 +44,14 @@ const PaymentForm = ({ studentId, onPaymentSuccess }) => {
 
     setLoading(true);
     try {
-      const response = await fetch('https://your-backend-url/payments', {
+      const response = await fetch('/payments', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           student_id: studentId,
           amount: parseFloat(amount),
           method,
+          description,
           date,
           term_id: termId,
         }),
@@ -66,8 +65,6 @@ const PaymentForm = ({ studentId, onPaymentSuccess }) => {
       setSuccess('Payment successfully added!');
       onPaymentSuccess();
       setAmount('');
-      setMethod('cash');
-      setDate(new Date().toISOString().split('T')[0]);
     } catch (err) {
       setError(err.message || 'Failed to add payment.');
     } finally {
@@ -91,8 +88,8 @@ const PaymentForm = ({ studentId, onPaymentSuccess }) => {
         <label>Method:</label>
         <select value={method} onChange={(e) => setMethod(e.target.value)}>
           <option value="cash">Cash</option>
-          <option value="mpesa">M-Pesa</option>
-          <option value="bank">Bank Transfer</option>
+          <option value="mpesa">Inkind</option>
+          <option value="paybill"></option>paybill
         </select>
       </div>
       <div>
@@ -101,6 +98,14 @@ const PaymentForm = ({ studentId, onPaymentSuccess }) => {
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
+        />
+      </div>
+      <div>
+        <label>Description:</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Optional description"
         />
       </div>
       <div>
@@ -124,4 +129,5 @@ const PaymentForm = ({ studentId, onPaymentSuccess }) => {
 };
 
 export default PaymentForm;
+
 

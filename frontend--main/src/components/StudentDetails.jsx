@@ -1,7 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
+
 import "../styles/studentDetails.css";
+import PaymentTable from "./PaymentTable";
+
 
 const StudentDetails = ({ student, showAddPayment, onAddPayment }) => {
+  const [showPayments, setShowPayments] = useState(false);
   if (!student) return <p>Select a student to view details.</p>;
 
   return (
@@ -36,6 +40,13 @@ const StudentDetails = ({ student, showAddPayment, onAddPayment }) => {
           Add Payment
         </button>
       )}
+      <button
+        className="view-payments-btn"
+        onClick={() => setShowPayments(!showPayments)}
+      >
+        {showPayments ? "Hide Payments" : "View Payments"}
+      </button>
+      {showPayments && <PaymentTable studentId={student.id} />}
     </div>
   );
 };

@@ -198,16 +198,18 @@ class Payment(db.Model):
         self.student_id = student_id
         self.amount = amount
         self.method = method
-        self.term_id = term_id
+        self.term_id = term_id or Term.get_active_term().id
         self.description = description or ""
 
         student = Student.query.get(student_id)
         if student:
             student.update_payment(amount, term_id)
             self.balance_after_payment = student.balance
+        else:
+            self.balance_after_payment = 0.0
 
         db.session.commit()
-
+    
     def __repr__(self):
         return f"<Payment(student_id={self.student_id}, amount={self.amount}, balance_after_payment={self.balance_after_payment})>"
     def to_dict(self):
